@@ -1,27 +1,29 @@
-﻿using D4Companion.Entities;
-using D4Companion.Events;
-using D4Companion.Interfaces;
+﻿using D4Companion.Events;
+using D4Companion.Updater.Interfaces;
 using Microsoft.Extensions.Logging;
 using Prism.Events;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Reflection;
-using System.Text.Json;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace D4Companion.Services
+namespace D4Companion.Updater.Services
 {
-    public class ReleaseManager : IReleaseManager
+    public class DownloadManager : IDownloadManager
     {
         private readonly IEventAggregator _eventAggregator;
         private readonly ILogger _logger;
         private readonly IHttpClientHandler _httpClientHandler;
 
-        private List<Release> _releases = new List<Release>();
-
         // Start of Constructors region
 
         #region Constructors
 
-        public ReleaseManager(IEventAggregator eventAggregator, ILogger<ReleaseManager> logger, HttpClientHandler httpClientHandler)
+        public DownloadManager(IEventAggregator eventAggregator, ILogger<DownloadManager> logger, HttpClientHandler httpClientHandler)
         {
             // Init IEventAggregator
             _eventAggregator = eventAggregator;
@@ -31,12 +33,6 @@ namespace D4Companion.Services
 
             // Init services
             _httpClientHandler = httpClientHandler;
-
-            // Update release info
-            Task.Factory.StartNew(() =>
-            {
-                UpdateAvailableReleases();
-            });
         }
 
         #endregion
@@ -50,9 +46,6 @@ namespace D4Companion.Services
         // Start of Properties region
 
         #region Properties
-
-        public List<Release> Releases { get => _releases; set => _releases = value; }
-        public string Repository { get; } = "https://api.github.com/repos/josdemmers/diablo4Companion/releases";
 
         #endregion
 
@@ -94,24 +87,6 @@ namespace D4Companion.Services
             {
                 _logger.LogError(ex, MethodBase.GetCurrentMethod()?.Name);
             }
-        }
-
-        private async void UpdateAvailableReleases()
-        {
-            _logger.LogInformation($"Updating release info from: {Repository}");
-
-            string json = await _httpClientHandler.GetRequest(Repository);
-            if (!string.IsNullOrWhiteSpace(json))
-            {
-                Releases.Clear();
-                Releases = JsonSerializer.Deserialize<List<Release>>(json) ?? new List<Release>();
-
-            }
-            else
-            {
-                _logger.LogWarning($"Invalid response. uri: {Repository}");
-            }
-            _eventAggregator.GetEvent<ReleaseInfoUpdatedEvent>().Publish();
         }
 
         #endregion

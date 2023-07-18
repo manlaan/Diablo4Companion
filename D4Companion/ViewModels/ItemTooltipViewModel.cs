@@ -625,13 +625,6 @@ namespace D4Companion.ViewModels
 
             // Load item types
             UpdateItemTypes();
-
-            // Load settings
-            var preset = _affixPresets.FirstOrDefault(preset => preset.Name.Equals(_settingsManager.Settings.SelectedAffixName));
-            if (preset != null)
-            {
-                SelectedAffixPreset = preset;
-            }
         }
 
         private bool CanAddAffixPresetNameExecute()
@@ -752,6 +745,13 @@ namespace D4Companion.ViewModels
             }
 
             if (!itemAffix.FileName.ToLower().Contains(AffixNameFilter.ToLower()) && !string.IsNullOrWhiteSpace(AffixNameFilter))
+            {
+                allowed = false;
+            }
+
+            // Extra filter for the sigils
+            if ((itemAffix.FileName.ToLower().StartsWith(ItemTypeConstants.Sigil) && !currentItemType.Equals(ItemTypeConstants.Sigil)) ||
+                (!itemAffix.FileName.ToLower().StartsWith(ItemTypeConstants.Sigil) && currentItemType.Equals(ItemTypeConstants.Sigil)))
             {
                 allowed = false;
             }
@@ -1154,7 +1154,12 @@ namespace D4Companion.ViewModels
                     AffixPresets.AddRange(_affixPresetManager.AffixPresets);
                     if (AffixPresets.Any())
                     {
-                        SelectedAffixPreset = AffixPresets[0];
+                        // Load settings
+                        var preset = _affixPresets.FirstOrDefault(preset => preset.Name.Equals(_settingsManager.Settings.SelectedAffixName));
+                        if (preset != null)
+                        {
+                            SelectedAffixPreset = preset;
+                        }
                     }
                 });
                 AddAffixPresetNameCommand?.RaiseCanExecuteChanged();

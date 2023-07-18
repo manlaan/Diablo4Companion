@@ -96,19 +96,21 @@ namespace D4Companion.Services
                             float top = _currentTooltip.Location.Y + itemAffixLocation.Y;
                             affixLocationHeight = itemAffixLocation.Height;
 
-                            if (!CheckAffixLocationHasPreferedAffix(_currentTooltip, top))
+                            if (!CheckAffixLocationHasPreferedAffix(_currentTooltip, top + (itemAffixLocation.Height / 2)))
                             {
+                                gfx.OutlineFillCircle(_brushes["black"], _brushes["red"], left, top + (itemAffixLocation.Height / 2), length, 2);
+
+                                // Note: Inverse logic for selected sigil affixes
                                 //if (_currentTooltip.ItemType.ToLower().Contains("sigil_"))
                                 //    gfx.OutlineFillCircle(_brushes["black"], _brushes["green"], left, top + (itemAffixLocation.Height / 2), length, 2);
-                                //else
-                                gfx.OutlineFillCircle(_brushes["black"], _brushes["red"], left, top + (itemAffixLocation.Height / 2), length, 2);
                             }
                             else
                             {
+                                gfx.OutlineFillCircle(_brushes["black"], _brushes["green"], left, top + (itemAffixLocation.Height / 2), length, 2);
+
+                                // Note: Inverse logic for selected sigil affixes
                                 //if (_currentTooltip.ItemType.ToLower().Contains("sigil_"))
                                 //    gfx.OutlineFillCircle(_brushes["black"], _brushes["red"], left, top + (itemAffixLocation.Height / 2), length, 2);
-                                //else
-                                gfx.OutlineFillCircle(_brushes["black"], _brushes["green"], left, top + (itemAffixLocation.Height / 2), length, 2);
                             }
                         }
                     }
@@ -331,9 +333,10 @@ namespace D4Companion.Services
         {
             foreach (var itemAffix in tooltip.ItemAffixes)
             {
-                float topMatch = tooltip.Location.Y + itemAffix.Y;
+                float affixTop = tooltip.Location.Y + itemAffix.Top;
+                float affixBottom = tooltip.Location.Y + itemAffix.Bottom;
 
-                if (Math.Abs(top - topMatch) < 10) return true;
+                if (top >= affixTop && top <= affixBottom) return true;
             }
 
             return false;

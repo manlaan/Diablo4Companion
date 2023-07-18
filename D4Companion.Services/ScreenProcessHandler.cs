@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Prism.Events;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.Metrics;
 using System.Drawing;
 using System.Reflection;
 
@@ -146,7 +147,7 @@ namespace D4Companion.Services
                 string[] fileEntries = Directory.GetFiles(directory);
                 foreach (string fileName in fileEntries)
                 {
-                    _imageListItemTooltips.TryAdd(Path.GetFileNameWithoutExtension(fileName), new Image<Gray, byte>(fileName));
+                    _imageListItemTooltips.TryAdd(Path.GetFileNameWithoutExtension(fileName).ToLower(), new Image<Gray, byte>(fileName));
                 }
             }
 
@@ -157,7 +158,7 @@ namespace D4Companion.Services
                 var fileEntries = Directory.GetFiles(directory).Where(itemtype => !itemtype.ToLower().Contains("weapon_all"));
                 foreach (string fileName in fileEntries)
                 {
-                    _imageListItemTypes.TryAdd(Path.GetFileNameWithoutExtension(fileName), new Image<Gray, byte>(fileName));
+                    _imageListItemTypes.TryAdd(Path.GetFileNameWithoutExtension(fileName).ToLower(), new Image<Gray, byte>(fileName));
                 }
             }
 
@@ -169,7 +170,7 @@ namespace D4Companion.Services
                 (!itemtype.ToLower().Contains("weapon_") && !itemtype.ToLower().Contains("ranged_") && !itemtype.ToLower().Contains("offhand_focus")));
                 foreach (string fileName in fileEntries)
                 {
-                    _imageListItemTypesLite.TryAdd(Path.GetFileNameWithoutExtension(fileName), new Image<Gray, byte>(fileName));
+                    _imageListItemTypesLite.TryAdd(Path.GetFileNameWithoutExtension(fileName).ToLower(), new Image<Gray, byte>(fileName));
                 }
             }
 
@@ -188,7 +189,7 @@ namespace D4Companion.Services
                 string[] fileEntries = Directory.GetFiles(directory);
                 foreach (string fileName in fileEntries)
                 {
-                    _imageListItemAffixes.TryAdd(Path.GetFileNameWithoutExtension(fileName), new Image<Gray, byte>(fileName));
+                    _imageListItemAffixes.TryAdd(Path.GetFileNameWithoutExtension(fileName).ToLower(), new Image<Gray, byte>(fileName));
                 }
             }
 
@@ -206,7 +207,7 @@ namespace D4Companion.Services
                 string[] fileEntries = Directory.GetFiles(directory);
                 foreach (string fileName in fileEntries)
                 {
-                    _imageListItemAspects.TryAdd(Path.GetFileNameWithoutExtension(fileName), new Image<Gray, byte>(fileName));
+                    _imageListItemAspects.TryAdd(Path.GetFileNameWithoutExtension(fileName).ToLower(), new Image<Gray, byte>(fileName));
                 }
             }
         }
@@ -601,7 +602,7 @@ namespace D4Companion.Services
                     currentTooltipImage = currentTooltip.Clone();
                     currentItemAffixLocationImage = _imageListItemAffixLocations[currentItemAffixLocation].Clone();
                 }
-                
+
                 //currentItemAffixLocationImage = currentItemAffixLocationImage.ThresholdBinaryInv(new Gray(_settingsManager.Settings.ThresholdMin), new Gray(_settingsManager.Settings.ThresholdMax));
 
                 double minVal = 0.0;
@@ -609,15 +610,10 @@ namespace D4Companion.Services
                 Point minLoc = new Point();
                 Point maxLoc = new Point();
 
-                CvInvoke.MatchTemplate(currentTooltipImage, currentItemAffixLocationImage, result, Emgu.CV.CvEnum.TemplateMatchingType.SqdiffNormed);
-                Mat resultNorm = new Mat();
-                CvInvoke.Normalize(result, resultNorm, 0, 1, Emgu.CV.CvEnum.NormType.MinMax, Emgu.CV.CvEnum.DepthType.Cv64F);
-                Matrix<double> matches = new Matrix<double>(resultNorm.Size);
-                resultNorm.CopyTo(matches);
-
                 do
                 {
-                    CvInvoke.MinMaxLoc(matches, ref minVal, ref maxVal, ref minLoc, ref maxLoc);
+                    CvInvoke.MatchTemplate(currentTooltipImage, currentItemAffixLocationImage, result, Emgu.CV.CvEnum.TemplateMatchingType.SqdiffNormed);
+                    CvInvoke.MinMaxLoc(result, ref minVal, ref maxVal, ref minLoc, ref maxLoc);
 
                     //_logger.LogDebug($"{MethodBase.GetCurrentMethod()?.Name}: ({currentItemAffixLocation}) Similarity: {String.Format("{0:0.0000000000}", minVal)}");
 
@@ -630,20 +626,13 @@ namespace D4Companion.Services
                             Similarity = minVal,
                             Location = new Rectangle(minLoc, currentItemAffixLocationImage.Size)
                         });
-
-                        matches[minLoc.Y, minLoc.X] = 0.5;
-                        matches[maxLoc.Y, maxLoc.X] = 0.5;
-
-                        // Mark location so that it's only detected once.
-                        var rectangle = new Rectangle(minLoc, currentItemAffixLocationImage.Size);
-                        CvInvoke.Rectangle(currentTooltipImage, rectangle, new MCvScalar(255, 255, 255), -1);
-                        //currentTooltipImage.Save($"Logging/currentAffixLocation{DateTime.Now.Ticks}_{currentItemAffixLocation}.png");
                     }
-                    else
-                    {
-                        matches[minLoc.Y, minLoc.X] = 0.5;
-                        matches[maxLoc.Y, maxLoc.X] = 0.5;
-                    }
+
+                    // Mark location so that it's only detected once.
+                    var rectangle = new Rectangle(minLoc, currentItemAffixLocationImage.Size);
+                    CvInvoke.Rectangle(currentTooltipImage, rectangle, new MCvScalar(255, 255, 255), -1);
+                    //currentTooltipImage.Save($"Logging/currentTooltip{DateTime.Now.Ticks}_{currentItemAffixLocation}.png");
+
                 } while (minVal < similarityThreshold);
             }
             catch (Exception exception)
